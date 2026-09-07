@@ -1,0 +1,28 @@
+{
+  "name": "aml-fraud-saas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Database, authentication and multi-tenancy foundation for the AML/Fraud Investigation SaaS.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "validate:db": "node scripts/validate-migrations.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "eslint": "^9.11.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}
