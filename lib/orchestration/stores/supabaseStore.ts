@@ -94,9 +94,27 @@ export class SupabaseOrchestrationStore implements OrchestrationStore {
     return data ?? [];
   }
 
+  async getRiskSignalsForAlert(alertId: string): Promise<RiskSignal[]> {
+    const { data, error } = await this.client.from("risk_signals").select("*").eq("alert_id", alertId);
+    if (error) throw new Error(`getRiskSignalsForAlert: ${error.message}`);
+    return data ?? [];
+  }
+
   async insertMlPrediction(prediction: Omit<MlPrediction, "id" | "created_at">): Promise<MlPrediction> {
     const result = await this.client.from("ml_predictions").insert(prediction).select("*").single();
     return unwrap(result, "insertMlPrediction");
+  }
+
+  async getLatestMlPredictionForAlert(alertId: string): Promise<MlPrediction | null> {
+    const { data, error } = await this.client
+      .from("ml_predictions")
+      .select("*")
+      .eq("alert_id", alertId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(`getLatestMlPredictionForAlert: ${error.message}`);
+    return data;
   }
 
   async insertRecommendation(
@@ -155,6 +173,26 @@ export class SupabaseOrchestrationStore implements OrchestrationStore {
   async insertCaseEvent(event: Omit<CaseEvent, "id" | "created_at" | "occurred_at">): Promise<CaseEvent> {
     const result = await this.client.from("case_events").insert(event).select("*").single();
     return unwrap(result, "insertCaseEvent");
+  }
+
+  async getCaseEvents(caseId: string): Promise<CaseEvent[]> {
+    const { data, error } = await this.client
+      .from("case_events")
+      .select("*")
+      .eq("case_id", caseId)
+      .order("occurred_at", { ascending: true });
+    if (error) throw new Error(`getCaseEvents: ${error.message}`);
+    return data ?? [];
+  }
+
+  async getAnalystDecisionsForAlert(alertId: string): Promise<AnalystDecision[]> {
+    const { data, error } = await this.client
+      .from("analyst_decisions")
+      .select("*")
+      .eq("alert_id", alertId)
+      .order("decided_at", { ascending: true });
+    if (error) throw new Error(`getAnalystDecisionsForAlert: ${error.message}`);
+    return data ?? [];
   }
 
   async insertAuditLog(log: Omit<AuditLog, "id" | "created_at">): Promise<AuditLog> {

@@ -36,7 +36,12 @@ export interface OrchestrationStore {
   insertRiskSignals(
     signals: Array<Omit<RiskSignal, "id" | "created_at" | "detected_at">>
   ): Promise<RiskSignal[]>;
+  /** Read-only counterpart to insertRiskSignals, for the Hermes tool
+   * boundary (lib/hermes/tools) and any other read-only consumer. */
+  getRiskSignalsForAlert(alertId: string): Promise<RiskSignal[]>;
   insertMlPrediction(prediction: Omit<MlPrediction, "id" | "created_at">): Promise<MlPrediction>;
+  /** Most recent ML prediction recorded for this alert, if any. */
+  getLatestMlPredictionForAlert(alertId: string): Promise<MlPrediction | null>;
   insertRecommendation(
     recommendation: Omit<AiRecommendation, "id" | "created_at">
   ): Promise<AiRecommendation>;
@@ -56,6 +61,11 @@ export interface OrchestrationStore {
   getCase(caseId: string): Promise<Case | null>;
   updateCase(caseId: string, patch: Partial<Case>): Promise<Case>;
   insertCaseEvent(event: Omit<CaseEvent, "id" | "created_at" | "occurred_at">): Promise<CaseEvent>;
+  /** Case history, oldest first — used by the Hermes tool boundary's
+   * "case history" tool (lib/hermes/tools) and available to any other
+   * read-only consumer. */
+  getCaseEvents(caseId: string): Promise<CaseEvent[]>;
+  getAnalystDecisionsForAlert(alertId: string): Promise<AnalystDecision[]>;
 
   insertAuditLog(log: Omit<AuditLog, "id" | "created_at">): Promise<AuditLog>;
   insertNotification(notification: Omit<Notification, "id" | "created_at">): Promise<Notification>;

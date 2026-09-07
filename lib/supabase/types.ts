@@ -67,6 +67,13 @@ export type MemoryCategory = "EPISODIC" | "SEMANTIC" | "PROCEDURAL" | "INVESTIGA
 export type SkillStatus = "DRAFT" | "ACTIVE" | "DEPRECATED";
 export type FeedbackType = "CONFIRM" | "OVERRULE" | "CORRECTION" | "COMMENT" | "RATING";
 export type GovernanceStatus = "PROPOSED" | "REVIEW" | "APPROVED" | "VERSIONED" | "DEPLOYED";
+export type ImprovementType =
+  | "SKILL_REFINEMENT"
+  | "EVIDENCE_PRIORITIZATION"
+  | "FALSE_POSITIVE_PATTERN"
+  | "PROMPT_IMPROVEMENT"
+  | "MODEL_RECOMMENDATION"
+  | "RULE_RECOMMENDATION";
 export type NotificationType =
   | "ALERT_ASSIGNED"
   | "CASE_ASSIGNED"
@@ -738,6 +745,55 @@ type NotificationsUpdate = {
   read_at?: string | null;
 };
 
+// --- learning_candidates ---------------------------------------------------------
+type LearningCandidatesRow = {
+  id: string;
+  organization_id: string;
+  improvement_type: ImprovementType;
+  title: string;
+  description: string;
+  payload: Json;
+  supporting_feedback_ids: string[];
+  status: GovernanceStatus;
+  related_skill_id: string | null;
+  related_model_version_id: string | null;
+  related_rule_version_id: string | null;
+  proposed_by: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  versioned_at: string | null;
+  deployed_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+type LearningCandidatesInsert = {
+  id?: string;
+  organization_id: string;
+  improvement_type: ImprovementType;
+  title: string;
+  description: string;
+  payload?: Json;
+  supporting_feedback_ids?: string[];
+  status?: GovernanceStatus;
+  related_skill_id?: string | null;
+  related_model_version_id?: string | null;
+  related_rule_version_id?: string | null;
+  proposed_by?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  versioned_at?: string | null;
+  deployed_at?: string | null;
+  rejection_reason?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+type LearningCandidatesUpdate = Partial<LearningCandidatesInsert>;
+
 // `type`, not `interface` — see the TableDef comment above: supabase-js's
 // generic inference needs this eagerly resolved, which only happens
 // reliably with a type alias.
@@ -771,6 +827,7 @@ export type Database = {
       model_versions: TableDef<ModelVersionsRow, ModelVersionsInsert, ModelVersionsUpdate>;
       rule_versions: TableDef<RuleVersionsRow, RuleVersionsInsert, RuleVersionsUpdate>;
       notifications: TableDef<NotificationsRow, NotificationsInsert, NotificationsUpdate>;
+      learning_candidates: TableDef<LearningCandidatesRow, LearningCandidatesInsert, LearningCandidatesUpdate>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -801,6 +858,7 @@ export type Database = {
       feedback_type: FeedbackType;
       governance_status: GovernanceStatus;
       notification_type: NotificationType;
+      improvement_type: ImprovementType;
     };
   };
 };
@@ -831,3 +889,4 @@ export type AgentFeedback = Row<"agent_feedback">;
 export type ModelVersion = Row<"model_versions">;
 export type RuleVersion = Row<"rule_versions">;
 export type Notification = Row<"notifications">;
+export type LearningCandidate = Row<"learning_candidates">;

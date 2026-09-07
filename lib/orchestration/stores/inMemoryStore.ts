@@ -171,6 +171,28 @@ export class InMemoryOrchestrationStore implements OrchestrationStore {
     return inserted;
   }
 
+  async getCaseEvents(caseId: string): Promise<CaseEvent[]> {
+    return this.caseEvents
+      .filter((e) => e.case_id === caseId)
+      .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+  }
+
+  async getAnalystDecisionsForAlert(alertId: string): Promise<AnalystDecision[]> {
+    return this.analystDecisions
+      .filter((d) => d.alert_id === alertId)
+      .sort((a, b) => a.decided_at.localeCompare(b.decided_at));
+  }
+
+  async getRiskSignalsForAlert(alertId: string): Promise<RiskSignal[]> {
+    return this.riskSignals.filter((s) => s.alert_id === alertId);
+  }
+
+  async getLatestMlPredictionForAlert(alertId: string): Promise<MlPrediction | null> {
+    const matches = this.mlPredictions.filter((p) => p.alert_id === alertId);
+    if (matches.length === 0) return null;
+    return matches.reduce((latest, p) => (p.created_at > latest.created_at ? p : latest));
+  }
+
   async insertAuditLog(log: Omit<AuditLog, "id" | "created_at">): Promise<AuditLog> {
     const inserted: AuditLog = { ...log, id: randomUUID(), created_at: new Date().toISOString() };
     this.auditLogs.push(inserted);
@@ -195,9 +217,6 @@ export class InMemoryOrchestrationStore implements OrchestrationStore {
   }
   getNotifications(): Notification[] {
     return [...this.notifications];
-  }
-  getCaseEvents(): CaseEvent[] {
-    return [...this.caseEvents];
   }
   getAnalystDecisions(): AnalystDecision[] {
     return [...this.analystDecisions];
