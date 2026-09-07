@@ -1,0 +1,181 @@
+/**
+ * Real (REAL mode) OrchestrationStore backed by Supabase, using the
+ * service-role client from feature/supabase-schema
+ * (lib/supabase/serviceClient.ts). This bypasses RLS by design — the
+ * orchestration service runs as a trusted backend process, not as any
+ * individual analyst, so it is solely responsible for scoping every query
+ * to the right organization_id itself (RLS won't do it here).
+ */
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import type {
+  AiRecommendation,
+  Alert,
+  AnalystDecision,
+  AuditLog,
+  Case,
+  CaseEvent,
+  CustomerProfile,
+  Customer as CustomerRow,
+  Database,
+  InvestigationState,
+  MlPrediction,
+  Notification,
+  RiskSignal,
+  Transaction,
+} from "../../supabase/types.js";
+import type { OrchestrationStore } from "../store.js";
+
+function unwrap<T>(result: { data: T | null; error: { message: string } | null }, context: string): T {
+  if (result.error) throw new Error(`${context}: ${result.error.message}`);
+  if (result.data === null) throw new Error(`${context}: no row returned`);
+  return result.data;
+}
+
+export class SupabaseOrchestrationStore implements OrchestrationStore {
+  constructor(private readonly client: SupabaseClient<Database>) {}
+
+  async getAlert(alertId: string): Promise<Alert | null> {
+    const { data, error } = await this.client.from("alerts").select("*").eq("id", alertId).maybeSingle();
+    if (error) throw new Error(`getAlert: ${error.message}`);
+    return data;
+  }
+
+  async updateAlertStatus(alertId: string, status: InvestigationState, patch: Partial<Alert> = {}): Promise<Alert> {
+    const result = await this.client
+      .from("alerts")
+      .update({ ...patch, status })
+      .eq("id", alertId)
+      .select("*")
+      .single();
+    return unwrap(result, "updateAlertStatus");
+  }
+
+  async getTransaction(transactionId: string): Promise<Transaction | null> {
+    const { data, error } = await this.client.from("transactions").select("*").eq("id", transactionId).maybeSingle();
+    if (error) throw new Error(`getTransaction: ${error.message}`);
+    return data;
+  }
+
+  async getRecentTransactions(customerId: string, beforeIso: string, limit: number): Promise<Transaction[]> {
+    const { data, error } = await this.client
+      .from("transactions")
+      .select("*")
+      .eq("customer_id", customerId)
+      .lt("transaction_at", beforeIso)
+      .order("transaction_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(`getRecentTransactions: ${error.message}`);
+    return data ?? [];
+  }
+
+  async getCustomer(customerId: string): Promise<CustomerRow | null> {
+    const { data, error } = await this.client.from("customers").select("*").eq("id", customerId).maybeSingle();
+    if (error) throw new Error(`getCustomer: ${error.message}`);
+    return data;
+  }
+
+  async getCustomerProfile(customerId: string): Promise<CustomerProfile | null> {
+    const { data, error } = await this.client
+      .from("customer_profiles")
+      .select("*")
+      .eq("customer_id", customerId)
+      .maybeSingle();
+    if (error) throw new Error(`getCustomerProfile: ${error.message}`);
+    return data;
+  }
+
+  async insertRiskSignals(
+    signals: Array<Omit<RiskSignal, "id" | "created_at" | "detected_at">>
+  ): Promise<RiskSignal[]> {
+    if (signals.length === 0) return [];
+    const { data, error } = await this.client.from("risk_signals").insert(signals).select("*");
+    if (error) throw new Error(`insertRiskSignals: ${error.message}`);
+    return data ?? [];
+  }
+
+  async insertMlPrediction(prediction: Omit<MlPrediction, "id" | "created_at">): Promise<MlPrediction> {
+    const result = await this.client.from("ml_predictions").insert(prediction).select("*").single();
+    return unwrap(result, "insertMlPrediction");
+  }
+
+  async insertRecommendation(
+    recommendation: Omit<AiRecommendation, "id" | "created_at">
+  ): Promise<AiRecommendation> {
+    const result = await this.client.from("ai_recommendations").insert(recommendation).select("*").single();
+    return unwrap(result, "insertRecommendation");
+  }
+
+  async insertAnalystDecision(
+    decision: Omit<AnalystDecision, "id" | "created_at" | "decided_at">
+  ): Promise<AnalystDecision> {
+    const result = await this.client.from("analyst_decisions").insert(decision).select("*").single();
+    return unwrap(result, "insertAnalystDecision");
+  }
+
+  async getOrCreateCase(input: {
+    organizationId: string;
+    alertId: string;
+    customerId: string;
+    priority: Case["priority"];
+  }): Promise<{ case: Case; created: boolean }> {
+    const { data: existing, error: findError } = await this.client
+      .from("cases")
+      .select("*")
+      .eq("alert_id", input.alertId)
+      .maybeSingle();
+    if (findError) throw new Error(`getOrCreateCase (lookup): ${findError.message}`);
+    if (existing) return { case: existing, created: false };
+
+    const result = await this.client
+      .from("cases")
+      .insert({
+        organization_id: input.organizationId,
+        alert_id: input.alertId,
+        customer_id: input.customerId,
+        priority: input.priority,
+        status: "OPEN",
+      })
+      .select("*")
+      .single();
+    return { case: unwrap(result, "getOrCreateCase (insert)"), created: true };
+  }
+
+  async getCase(caseId: string): Promise<Case | null> {
+    const { data, error } = await this.client.from("cases").select("*").eq("id", caseId).maybeSingle();
+    if (error) throw new Error(`getCase: ${error.message}`);
+    return data;
+  }
+
+  async updateCase(caseId: string, patch: Partial<Case>): Promise<Case> {
+    const result = await this.client.from("cases").update(patch).eq("id", caseId).select("*").single();
+    return unwrap(result, "updateCase");
+  }
+
+  async insertCaseEvent(event: Omit<CaseEvent, "id" | "created_at" | "occurred_at">): Promise<CaseEvent> {
+    const result = await this.client.from("case_events").insert(event).select("*").single();
+    return unwrap(result, "insertCaseEvent");
+  }
+
+  async insertAuditLog(log: Omit<AuditLog, "id" | "created_at">): Promise<AuditLog> {
+    const result = await this.client.from("audit_logs").insert(log).select("*").single();
+    return unwrap(result, "insertAuditLog");
+  }
+
+  async insertNotification(notification: Omit<Notification, "id" | "created_at">): Promise<Notification> {
+    const result = await this.client.from("notifications").insert(notification).select("*").single();
+    return unwrap(result, "insertNotification");
+  }
+
+  async findRecommendationByAlertId(alertId: string): Promise<AiRecommendation | null> {
+    const { data, error } = await this.client
+      .from("ai_recommendations")
+      .select("*")
+      .eq("alert_id", alertId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(`findRecommendationByAlertId: ${error.message}`);
+    return data;
+  }
+}

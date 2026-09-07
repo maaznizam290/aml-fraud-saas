@@ -1,0 +1,62 @@
+{
+  "name": "AML Human Review Action",
+  "meta": {
+    "description": "Fired when an analyst approves/rejects/overrides a recommendation (from the dashboard, or a Slack interactive button). Thin — all the actual audit/case-update logic is server-side in lib/orchestration/humanReview.ts.",
+    "instanceId": "aml-fraud-saas"
+  },
+  "nodes": [
+    {
+      "id": "webhook_trigger",
+      "name": "human-review Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "path": "aml-human-review",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "call_review_api",
+      "name": "Submit Review Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "notes": "POST /api/investigations/:alertId/review — action is APPROVE | REJECT | OVERRIDE; see lib/orchestration/humanReview.ts for the recorded audit trail (analyst, timestamp, original recommendation, final decision, override status, rationale).",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_BASE_URL + '/api/investigations/' + $json.body.alertId + '/review' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { analystId: $json.body.analystId, action: $json.body.action, overrideDisposition: $json.body.overrideDisposition, rationale: $json.body.rationale } }}",
+        "options": { "timeout": 15000, "response": { "response": { "neverError": true } } }
+      }
+    },
+    {
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [480, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}"
+      }
+    }
+  ],
+  "connections": {
+    "human-review Webhook": {
+      "main": [[{ "node": "Submit Review Decision", "type": "main", "index": 0 }]]
+    },
+    "Submit Review Decision": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

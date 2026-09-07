@@ -75,35 +75,45 @@ export type NotificationType =
   | "MENTION"
   | "SYSTEM";
 
-type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
-interface TableDef<R, I, U> {
+// `type`, not `interface`: supabase-js's internal conditional/`infer` types
+// (used to derive Insert/Update argument types) were observed to silently
+// resolve to `never` when this was an interface, or when Row/Insert were
+// declared with `interface` — TypeScript expands `type` aliases eagerly
+// during that inference in a way it does not for named interfaces. See
+// lib/orchestration/stores/supabaseStore.ts, where this surfaced.
+type TableDef<R, I, U> = {
   Row: R;
   Insert: I;
   Update: U;
-}
+  // supabase-js's generic constraints (GenericTable) require this field to
+  // exist on every table. We don't model embedded-relationship selects, so
+  // `never[]` (assignable to any GenericRelationship[]) is enough.
+  Relationships: never[];
+};
 
 // --- organizations ---------------------------------------------------------
-interface OrganizationsRow {
+type OrganizationsRow = {
   id: string;
   name: string;
   slug: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-}
-interface OrganizationsInsert {
+};
+type OrganizationsInsert = {
   id?: string;
   name: string;
   slug: string;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
-}
+};
 type OrganizationsUpdate = Partial<OrganizationsInsert>;
 
 // --- organization_settings ---------------------------------------------------------
-interface OrganizationSettingsRow {
+type OrganizationSettingsRow = {
   id: string;
   organization_id: string;
   risk_thresholds: Json;
@@ -111,8 +121,8 @@ interface OrganizationSettingsRow {
   settings: Json;
   created_at: string;
   updated_at: string;
-}
-interface OrganizationSettingsInsert {
+};
+type OrganizationSettingsInsert = {
   id?: string;
   organization_id: string;
   risk_thresholds?: Json;
@@ -120,11 +130,11 @@ interface OrganizationSettingsInsert {
   settings?: Json;
   created_at?: string;
   updated_at?: string;
-}
+};
 type OrganizationSettingsUpdate = Partial<OrganizationSettingsInsert>;
 
 // --- profiles ---------------------------------------------------------
-interface ProfilesRow {
+type ProfilesRow = {
   id: string;
   organization_id: string | null;
   email: string;
@@ -133,8 +143,8 @@ interface ProfilesRow {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-}
-interface ProfilesInsert {
+};
+type ProfilesInsert = {
   id: string;
   organization_id?: string | null;
   email: string;
@@ -143,11 +153,11 @@ interface ProfilesInsert {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
-}
+};
 type ProfilesUpdate = Partial<Omit<ProfilesInsert, "id">>;
 
 // --- customers ---------------------------------------------------------
-interface CustomersRow {
+type CustomersRow = {
   id: string;
   organization_id: string;
   external_customer_id: string;
@@ -162,8 +172,8 @@ interface CustomersRow {
   account_opened_at: string;
   created_at: string;
   updated_at: string;
-}
-interface CustomersInsert {
+};
+type CustomersInsert = {
   id?: string;
   organization_id: string;
   external_customer_id: string;
@@ -178,11 +188,11 @@ interface CustomersInsert {
   account_opened_at?: string;
   created_at?: string;
   updated_at?: string;
-}
+};
 type CustomersUpdate = Partial<CustomersInsert>;
 
 // --- customer_profiles ---------------------------------------------------------
-interface CustomerProfilesRow {
+type CustomerProfilesRow = {
   id: string;
   organization_id: string;
   customer_id: string;
@@ -199,8 +209,8 @@ interface CustomerProfilesRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
-}
-interface CustomerProfilesInsert {
+};
+type CustomerProfilesInsert = {
   id?: string;
   organization_id: string;
   customer_id: string;
@@ -217,11 +227,11 @@ interface CustomerProfilesInsert {
   notes?: string | null;
   created_at?: string;
   updated_at?: string;
-}
+};
 type CustomerProfilesUpdate = Partial<CustomerProfilesInsert>;
 
 // --- transactions ---------------------------------------------------------
-interface TransactionsRow {
+type TransactionsRow = {
   id: string;
   organization_id: string;
   customer_id: string;
@@ -241,8 +251,8 @@ interface TransactionsRow {
   ip_address: string | null;
   transaction_at: string;
   created_at: string;
-}
-interface TransactionsInsert {
+};
+type TransactionsInsert = {
   id?: string;
   organization_id: string;
   customer_id: string;
@@ -262,11 +272,11 @@ interface TransactionsInsert {
   ip_address?: string | null;
   transaction_at?: string;
   created_at?: string;
-}
+};
 type TransactionsUpdate = Partial<TransactionsInsert>;
 
 // --- alerts ---------------------------------------------------------
-interface AlertsRow {
+type AlertsRow = {
   id: string;
   organization_id: string;
   customer_id: string;
@@ -284,8 +294,8 @@ interface AlertsRow {
   resolved_at: string | null;
   created_at: string;
   updated_at: string;
-}
-interface AlertsInsert {
+};
+type AlertsInsert = {
   id?: string;
   organization_id: string;
   customer_id: string;
@@ -303,11 +313,11 @@ interface AlertsInsert {
   resolved_at?: string | null;
   created_at?: string;
   updated_at?: string;
-}
+};
 type AlertsUpdate = Partial<AlertsInsert>;
 
 // --- risk_signals ---------------------------------------------------------
-interface RiskSignalsRow {
+type RiskSignalsRow = {
   id: string;
   organization_id: string;
   customer_id: string;
@@ -319,8 +329,8 @@ interface RiskSignalsRow {
   description: string | null;
   detected_at: string;
   created_at: string;
-}
-interface RiskSignalsInsert {
+};
+type RiskSignalsInsert = {
   id?: string;
   organization_id: string;
   customer_id: string;
@@ -332,11 +342,11 @@ interface RiskSignalsInsert {
   description?: string | null;
   detected_at?: string;
   created_at?: string;
-}
+};
 type RiskSignalsUpdate = Partial<RiskSignalsInsert>;
 
 // --- ml_predictions ---------------------------------------------------------
-interface MlPredictionsRow {
+type MlPredictionsRow = {
   id: string;
   organization_id: string;
   customer_id: string;
@@ -351,8 +361,8 @@ interface MlPredictionsRow {
   features: Json;
   metadata: Json;
   created_at: string;
-}
-interface MlPredictionsInsert {
+};
+type MlPredictionsInsert = {
   id?: string;
   organization_id: string;
   customer_id: string;
@@ -367,11 +377,11 @@ interface MlPredictionsInsert {
   features?: Json;
   metadata?: Json;
   created_at?: string;
-}
+};
 type MlPredictionsUpdate = Partial<MlPredictionsInsert>;
 
 // --- ai_recommendations ---------------------------------------------------------
-interface AiRecommendationsRow {
+type AiRecommendationsRow = {
   id: string;
   organization_id: string;
   alert_id: string;
@@ -390,8 +400,8 @@ interface AiRecommendationsRow {
   prompt_version: string | null;
   metadata: Json;
   created_at: string;
-}
-interface AiRecommendationsInsert {
+};
+type AiRecommendationsInsert = {
   id?: string;
   organization_id: string;
   alert_id: string;
@@ -410,11 +420,11 @@ interface AiRecommendationsInsert {
   prompt_version?: string | null;
   metadata?: Json;
   created_at?: string;
-}
+};
 type AiRecommendationsUpdate = Partial<AiRecommendationsInsert>;
 
 // --- analyst_decisions ---------------------------------------------------------
-interface AnalystDecisionsRow {
+type AnalystDecisionsRow = {
   id: string;
   organization_id: string;
   alert_id: string;
@@ -426,8 +436,8 @@ interface AnalystDecisionsRow {
   notes: string | null;
   decided_at: string;
   created_at: string;
-}
-interface AnalystDecisionsInsert {
+};
+type AnalystDecisionsInsert = {
   id?: string;
   organization_id: string;
   alert_id: string;
@@ -439,11 +449,11 @@ interface AnalystDecisionsInsert {
   notes?: string | null;
   decided_at?: string;
   created_at?: string;
-}
+};
 type AnalystDecisionsUpdate = Partial<AnalystDecisionsInsert>;
 
 // --- cases ---------------------------------------------------------
-interface CasesRow {
+type CasesRow = {
   id: string;
   organization_id: string;
   case_number: string;
@@ -459,8 +469,8 @@ interface CasesRow {
   resolved_at: string | null;
   created_at: string;
   updated_at: string;
-}
-interface CasesInsert {
+};
+type CasesInsert = {
   id?: string;
   organization_id: string;
   case_number?: string;
@@ -476,11 +486,11 @@ interface CasesInsert {
   resolved_at?: string | null;
   created_at?: string;
   updated_at?: string;
-}
+};
 type CasesUpdate = Partial<CasesInsert>;
 
 // --- case_events ---------------------------------------------------------
-interface CaseEventsRow {
+type CaseEventsRow = {
   id: string;
   organization_id: string;
   case_id: string;
@@ -491,8 +501,8 @@ interface CaseEventsRow {
   metadata: Json;
   occurred_at: string;
   created_at: string;
-}
-interface CaseEventsInsert {
+};
+type CaseEventsInsert = {
   id?: string;
   organization_id: string;
   case_id: string;
@@ -503,11 +513,11 @@ interface CaseEventsInsert {
   metadata?: Json;
   occurred_at?: string;
   created_at?: string;
-}
+};
 type CaseEventsUpdate = Partial<CaseEventsInsert>;
 
 // --- audit_logs ---------------------------------------------------------
-interface AuditLogsRow {
+type AuditLogsRow = {
   id: string;
   organization_id: string;
   actor_id: string | null;
@@ -518,8 +528,8 @@ interface AuditLogsRow {
   correlation_id: string | null;
   metadata: Json;
   created_at: string;
-}
-interface AuditLogsInsert {
+};
+type AuditLogsInsert = {
   id?: string;
   organization_id: string;
   actor_id?: string | null;
@@ -530,12 +540,12 @@ interface AuditLogsInsert {
   correlation_id?: string | null;
   metadata?: Json;
   created_at?: string;
-}
+};
 // Immutable once written: no UPDATE/DELETE RLS policy exists.
 type AuditLogsUpdate = never;
 
 // --- agent_memory ---------------------------------------------------------
-interface AgentMemoryRow {
+type AgentMemoryRow = {
   id: string;
   organization_id: string;
   category: MemoryCategory;
@@ -546,8 +556,8 @@ interface AgentMemoryRow {
   source: string | null;
   created_at: string;
   updated_at: string;
-}
-interface AgentMemoryInsert {
+};
+type AgentMemoryInsert = {
   id?: string;
   organization_id: string;
   category: MemoryCategory;
@@ -558,11 +568,11 @@ interface AgentMemoryInsert {
   source?: string | null;
   created_at?: string;
   updated_at?: string;
-}
+};
 type AgentMemoryUpdate = Partial<AgentMemoryInsert>;
 
 // --- agent_skills ---------------------------------------------------------
-interface AgentSkillsRow {
+type AgentSkillsRow = {
   id: string;
   organization_id: string;
   name: string;
@@ -576,8 +586,8 @@ interface AgentSkillsRow {
   metadata: Json;
   created_at: string;
   updated_at: string;
-}
-interface AgentSkillsInsert {
+};
+type AgentSkillsInsert = {
   id?: string;
   organization_id: string;
   name: string;
@@ -591,11 +601,11 @@ interface AgentSkillsInsert {
   metadata?: Json;
   created_at?: string;
   updated_at?: string;
-}
+};
 type AgentSkillsUpdate = Partial<AgentSkillsInsert>;
 
 // --- agent_feedback ---------------------------------------------------------
-interface AgentFeedbackRow {
+type AgentFeedbackRow = {
   id: string;
   organization_id: string;
   alert_id: string | null;
@@ -608,8 +618,8 @@ interface AgentFeedbackRow {
   comments: string | null;
   learning_metadata: Json;
   created_at: string;
-}
-interface AgentFeedbackInsert {
+};
+type AgentFeedbackInsert = {
   id?: string;
   organization_id: string;
   alert_id?: string | null;
@@ -622,12 +632,12 @@ interface AgentFeedbackInsert {
   comments?: string | null;
   learning_metadata?: Json;
   created_at?: string;
-}
+};
 // Permanent record: no UPDATE RLS policy exists.
 type AgentFeedbackUpdate = never;
 
 // --- model_versions ---------------------------------------------------------
-interface ModelVersionsRow {
+type ModelVersionsRow = {
   id: string;
   organization_id: string | null;
   model_name: string;
@@ -642,8 +652,8 @@ interface ModelVersionsRow {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
-}
-interface ModelVersionsInsert {
+};
+type ModelVersionsInsert = {
   id?: string;
   organization_id?: string | null;
   model_name: string;
@@ -658,11 +668,11 @@ interface ModelVersionsInsert {
   approved_at?: string | null;
   created_at?: string;
   updated_at?: string;
-}
+};
 type ModelVersionsUpdate = Partial<ModelVersionsInsert>;
 
 // --- rule_versions ---------------------------------------------------------
-interface RuleVersionsRow {
+type RuleVersionsRow = {
   id: string;
   organization_id: string;
   rule_name: string;
@@ -675,8 +685,8 @@ interface RuleVersionsRow {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
-}
-interface RuleVersionsInsert {
+};
+type RuleVersionsInsert = {
   id?: string;
   organization_id: string;
   rule_name: string;
@@ -689,11 +699,11 @@ interface RuleVersionsInsert {
   approved_at?: string | null;
   created_at?: string;
   updated_at?: string;
-}
+};
 type RuleVersionsUpdate = Partial<RuleVersionsInsert>;
 
 // --- notifications ---------------------------------------------------------
-interface NotificationsRow {
+type NotificationsRow = {
   id: string;
   organization_id: string;
   recipient_id: string;
@@ -706,8 +716,8 @@ interface NotificationsRow {
   read_at: string | null;
   metadata: Json;
   created_at: string;
-}
-interface NotificationsInsert {
+};
+type NotificationsInsert = {
   id?: string;
   organization_id: string;
   recipient_id: string;
@@ -720,15 +730,25 @@ interface NotificationsInsert {
   read_at?: string | null;
   metadata?: Json;
   created_at?: string;
-}
+};
 // Recipients may only toggle is_read/read_at (enforced by a trigger, not
 // expressible here) — never rewrite title/body/type/etc.
-interface NotificationsUpdate {
+type NotificationsUpdate = {
   is_read?: boolean;
   read_at?: string | null;
-}
+};
 
-export interface Database {
+// `type`, not `interface` — see the TableDef comment above: supabase-js's
+// generic inference needs this eagerly resolved, which only happens
+// reliably with a type alias.
+export type Database = {
+  // Matches the shape `supabase gen types typescript` emits as of the
+  // PostgREST v12 client — supabase-js's generic Insert/Update inference
+  // depends on this marker being present (its absence was observed to
+  // silently collapse every table's Insert/Update type to `never`).
+  __InternalSupabase: {
+    PostgrestVersion: "12";
+  };
   public: {
     Tables: {
       organizations: TableDef<OrganizationsRow, OrganizationsInsert, OrganizationsUpdate>;
@@ -783,7 +803,7 @@ export interface Database {
       notification_type: NotificationType;
     };
   };
-}
+};
 
 export type Tables = Database["public"]["Tables"];
 export type TableName = keyof Tables;

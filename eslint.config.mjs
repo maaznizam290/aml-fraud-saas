@@ -4,7 +4,7 @@ import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "supabase/.branches/**", "supabase/.temp/**"],
+    ignores: ["dist/**", "node_modules/**", "supabase/.branches/**", "supabase/.temp/**", ".next/**"],
   },
   {
     files: ["**/*.ts"],
@@ -19,7 +19,7 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
 ];
