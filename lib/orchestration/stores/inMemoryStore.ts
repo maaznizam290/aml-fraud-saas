@@ -21,9 +21,8 @@ import type {
   RiskSignal,
   Transaction,
 } from "../../supabase/types.js";
-import type { OrchestrationStore } from "../store.js";
-
-const DEMO_ORG_ID = "00000000-0000-0000-0000-0000000000d0";
+import type { AlertListFilter, AlertListItem, AuditLogFilter, CaseListFilter, OrchestrationStore } from "../store.js";
+import { DEMO_ORGANIZATION_ID as DEMO_ORG_ID } from "../../shared/constants.js";
 
 export class InMemoryOrchestrationStore implements OrchestrationStore {
   private alerts = new Map<string, Alert>();
@@ -64,6 +63,34 @@ export class InMemoryOrchestrationStore implements OrchestrationStore {
     const updated: Alert = { ...existing, ...patch, status, updated_at: new Date().toISOString() };
     this.alerts.set(alertId, updated);
     return updated;
+  }
+
+  async listAlerts(
+    organizationId: string,
+    filter: AlertListFilter = {}
+  ): Promise<{ items: AlertListItem[]; total: number }> {
+    let results = [...this.alerts.values()].filter((a) => a.organization_id === organizationId);
+    if (filter.status) results = results.filter((a) => a.status === filter.status);
+    if (filter.severity) results = results.filter((a) => a.severity === filter.severity);
+    if (filter.minRiskScore !== undefined) {
+      const min = filter.minRiskScore;
+      results = results.filter((a) => (a.risk_score ?? 0) >= min);
+    }
+    if (filter.search) {
+      const needle = filter.search.toLowerCase();
+      results = results.filter(
+        (a) => a.id.toLowerCase().includes(needle) || a.customer_id.toLowerCase().includes(needle)
+      );
+    }
+    results = results.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const total = results.length;
+    const offset = filter.offset ?? 0;
+    const limit = filter.limit ?? 50;
+    const items: AlertListItem[] = results.slice(offset, offset + limit).map((a) => ({
+      ...a,
+      transactionAmount: a.transaction_id ? this.transactions.get(a.transaction_id)?.amount ?? null : null,
+    }));
+    return { items, total };
   }
 
   async getTransaction(transactionId: string): Promise<Transaction | null> {
@@ -156,6 +183,22 @@ export class InMemoryOrchestrationStore implements OrchestrationStore {
     return this.cases.get(caseId) ?? null;
   }
 
+  async getCaseByAlertId(alertId: string): Promise<Case | null> {
+    const id = this.casesByAlertId.get(alertId);
+    return id ? this.cases.get(id) ?? null : null;
+  }
+
+  async listCases(organizationId: string, filter: CaseListFilter = {}): Promise<{ items: Case[]; total: number }> {
+    let results = [...this.cases.values()].filter((c) => c.organization_id === organizationId);
+    if (filter.status) results = results.filter((c) => c.status === filter.status);
+    if (filter.priority) results = results.filter((c) => c.priority === filter.priority);
+    results = results.sort((a, b) => b.opened_at.localeCompare(a.opened_at));
+    const total = results.length;
+    const offset = filter.offset ?? 0;
+    const limit = filter.limit ?? 50;
+    return { items: results.slice(offset, offset + limit), total };
+  }
+
   async updateCase(caseId: string, patch: Partial<Case>): Promise<Case> {
     const existing = this.cases.get(caseId);
     if (!existing) throw new Error(`Case ${caseId} not found`);
@@ -197,6 +240,18 @@ export class InMemoryOrchestrationStore implements OrchestrationStore {
     const inserted: AuditLog = { ...log, id: randomUUID(), created_at: new Date().toISOString() };
     this.auditLogs.push(inserted);
     return inserted;
+  }
+
+  async listAuditLogs(organizationId: string, filter: AuditLogFilter = {}): Promise<AuditLog[]> {
+    let results = this.auditLogs.filter((l) => l.organization_id === organizationId);
+    if (filter.entityType) results = results.filter((l) => l.entity_type === filter.entityType);
+    if (filter.correlationId) results = results.filter((l) => l.correlation_id === filter.correlationId);
+    if (filter.before) {
+      const before = filter.before;
+      results = results.filter((l) => l.created_at < before);
+    }
+    results = results.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return results.slice(0, filter.limit ?? 100);
   }
 
   async insertNotification(notification: Omit<Notification, "id" | "created_at">): Promise<Notification> {

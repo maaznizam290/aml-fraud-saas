@@ -157,6 +157,20 @@ export class InMemoryHermesStore implements HermesStore {
     return inserted;
   }
 
+  async listAuditLogs(
+    organizationId: string,
+    filter: { limit?: number; before?: string; correlationId?: string } = {}
+  ): Promise<AuditLog[]> {
+    let results = this.auditLogs.filter((l) => l.organization_id === organizationId);
+    if (filter.correlationId) results = results.filter((l) => l.correlation_id === filter.correlationId);
+    if (filter.before) {
+      const before = filter.before;
+      results = results.filter((l) => l.created_at < before);
+    }
+    results = results.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return results.slice(0, filter.limit ?? 100);
+  }
+
   // --- test/debug introspection ---
   getAuditLogs(): AuditLog[] {
     return [...this.auditLogs];

@@ -26,10 +26,13 @@ import type {
   HermesResult,
   LearningCandidate,
   MemoryQuery,
+  ModelVersion,
   ProposeCandidateInput,
   ProposeSkillInput,
+  RuleVersion,
 } from "../types.js";
 import { hermesUnavailable } from "../types.js";
+import type { AuditLog } from "../../supabase/types.js";
 import type { HermesProvider } from "../provider.js";
 
 const REASON = "Hermes is unavailable — the main investigation system continues unaffected.";
@@ -96,6 +99,21 @@ export class UnavailableHermesProvider implements HermesProvider {
   }
 
   async generateCandidatesFromFeedback(_organizationId: string): Promise<HermesResult<LearningCandidate[]>> {
+    return hermesUnavailable(this.reason);
+  }
+
+  async listModelVersions(_organizationId: string): Promise<HermesResult<ModelVersion[]>> {
+    return hermesUnavailable(this.reason);
+  }
+
+  async listRuleVersions(_organizationId: string): Promise<HermesResult<RuleVersion[]>> {
+    return hermesUnavailable(this.reason);
+  }
+
+  async listAuditLogs(
+    _organizationId: string,
+    _filter?: { limit?: number; before?: string; correlationId?: string }
+  ): Promise<HermesResult<AuditLog[]>> {
     return hermesUnavailable(this.reason);
   }
 }

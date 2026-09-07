@@ -39,6 +39,9 @@ describe("UnavailableHermesProvider", () => {
         actorRole: "COMPLIANCE_MANAGER",
       }),
       provider.generateCandidatesFromFeedback(ORG_A),
+      provider.listModelVersions(ORG_A),
+      provider.listRuleVersions(ORG_A),
+      provider.listAuditLogs(ORG_A),
     ]);
 
     for (const result of results) {
@@ -83,6 +86,7 @@ describe("LocalHermesProvider malformed/failing store responses", () => {
           metadata: {},
           created_at: new Date().toISOString(),
         }),
+      listAuditLogs: () => Promise.reject(new Error("malformed response")),
     };
 
     const provider = new LocalHermesProvider(brokenStore);

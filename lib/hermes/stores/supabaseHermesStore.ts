@@ -177,4 +177,17 @@ export class SupabaseHermesStore implements HermesStore {
     const result = await this.client.from("audit_logs").insert(log).select("*").single();
     return unwrap(result, "insertAuditLog");
   }
+
+  async listAuditLogs(
+    organizationId: string,
+    filter: { limit?: number; before?: string; correlationId?: string } = {}
+  ): Promise<AuditLog[]> {
+    let query = this.client.from("audit_logs").select("*").eq("organization_id", organizationId);
+    if (filter.correlationId) query = query.eq("correlation_id", filter.correlationId);
+    if (filter.before) query = query.lt("created_at", filter.before);
+    query = query.order("created_at", { ascending: false }).limit(filter.limit ?? 100);
+    const { data, error } = await query;
+    if (error) throw new Error(`listAuditLogs: ${error.message}`);
+    return data ?? [];
+  }
 }

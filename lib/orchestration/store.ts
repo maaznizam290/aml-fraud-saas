@@ -10,9 +10,12 @@
 import type {
   AiRecommendation,
   Alert,
+  AlertSeverity,
   AnalystDecision,
   AuditLog,
   Case,
+  CasePriority,
+  CaseStatus,
   CaseEvent,
   Customer,
   CustomerProfile,
@@ -23,9 +26,47 @@ import type {
   Transaction,
 } from "../supabase/types.js";
 
+export interface AlertListItem extends Alert {
+  transactionAmount: number | null;
+}
+
+export interface AlertListFilter {
+  status?: InvestigationState;
+  severity?: AlertSeverity;
+  minRiskScore?: number;
+  /** Case-insensitive substring match against alert id or customer id —
+   * a simple, honest search, not a full-text index. */
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CaseListFilter {
+  status?: CaseStatus;
+  priority?: CasePriority;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AuditLogFilter {
+  limit?: number;
+  /** ISO timestamp cursor — only rows strictly before this. */
+  before?: string;
+  entityType?: string;
+  /** Every orchestration audit row for one investigation shares its
+   * alert's id as `correlation_id` — pass the alertId here to scope the
+   * trail to a single investigation. */
+  correlationId?: string;
+}
+
 export interface OrchestrationStore {
   getAlert(alertId: string): Promise<Alert | null>;
   updateAlertStatus(alertId: string, status: InvestigationState, patch?: Partial<Alert>): Promise<Alert>;
+  /** Dashboard/Alert Center listing — org-scoped, paginated. Each item
+   * includes its primary transaction's amount (a small join purely for
+   * table display — the Alert Center's required "amount" column), never
+   * the full transaction. */
+  listAlerts(organizationId: string, filter?: AlertListFilter): Promise<{ items: AlertListItem[]; total: number }>;
 
   getTransaction(transactionId: string): Promise<Transaction | null>;
   getRecentTransactions(customerId: string, beforeIso: string, limit: number): Promise<Transaction[]>;
@@ -59,6 +100,12 @@ export interface OrchestrationStore {
     priority: Case["priority"];
   }): Promise<{ case: Case; created: boolean }>;
   getCase(caseId: string): Promise<Case | null>;
+  /** Read-only lookup, unlike getOrCreateCase — for display-only contexts
+   * (the investigation workspace) that must never create a case as a side
+   * effect of a GET request. */
+  getCaseByAlertId(alertId: string): Promise<Case | null>;
+  /** Cases page listing — org-scoped, paginated. */
+  listCases(organizationId: string, filter?: CaseListFilter): Promise<{ items: Case[]; total: number }>;
   updateCase(caseId: string, patch: Partial<Case>): Promise<Case>;
   insertCaseEvent(event: Omit<CaseEvent, "id" | "created_at" | "occurred_at">): Promise<CaseEvent>;
   /** Case history, oldest first — used by the Hermes tool boundary's
@@ -68,6 +115,11 @@ export interface OrchestrationStore {
   getAnalystDecisionsForAlert(alertId: string): Promise<AnalystDecision[]>;
 
   insertAuditLog(log: Omit<AuditLog, "id" | "created_at">): Promise<AuditLog>;
+  /** Audit Trail page — org-scoped, newest first, cursor-paginated. Reads
+   * the same `audit_logs` table every layer (webhook intake, human review,
+   * case resolution, notifications, Hermes learning events) already writes
+   * to — this is a reader, not a second audit system. */
+  listAuditLogs(organizationId: string, filter?: AuditLogFilter): Promise<AuditLog[]>;
   insertNotification(notification: Omit<Notification, "id" | "created_at">): Promise<Notification>;
 
   /** Idempotency check for the webhook entry point: has this alert already

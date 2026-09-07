@@ -24,9 +24,12 @@ import type {
   HermesResult,
   LearningCandidate,
   MemoryQuery,
+  ModelVersion,
   ProposeCandidateInput,
   ProposeSkillInput,
+  RuleVersion,
 } from "./types.js";
+import type { AuditLog } from "../supabase/types.js";
 import type { CandidateFilter, FeedbackFilter, SkillFilter } from "./store.js";
 
 export interface HermesProvider {
@@ -63,4 +66,12 @@ export interface HermesProvider {
    * proposing as a candidate — see learningCandidates.ts. Always produces a
    * PROPOSED candidate for a human to review; never applies anything. */
   generateCandidatesFromFeedback(organizationId: string): Promise<HermesResult<LearningCandidate[]>>;
+
+  // --- read-only reference data (Model Registry / Audit Trail pages) ---
+  listModelVersions(organizationId: string): Promise<HermesResult<ModelVersion[]>>;
+  listRuleVersions(organizationId: string): Promise<HermesResult<RuleVersion[]>>;
+  listAuditLogs(
+    organizationId: string,
+    filter?: { limit?: number; before?: string; correlationId?: string }
+  ): Promise<HermesResult<AuditLog[]>>;
 }
