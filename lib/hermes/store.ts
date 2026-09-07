@@ -62,4 +62,12 @@ export interface HermesStore {
   ): Promise<LearningCandidate>;
 
   insertAuditLog(log: Omit<AuditLog, "id" | "created_at">): Promise<AuditLog>;
+  /** Audit Trail page reader (feature/investigation-dashboard) — Hermes
+   * writes to the same shared `audit_logs` table as the orchestration
+   * layer, so a unified trail merges this with
+   * `OrchestrationStore.listAuditLogs`. */
+  listAuditLogs(
+    organizationId: string,
+    filter?: { limit?: number; before?: string; correlationId?: string }
+  ): Promise<AuditLog[]>;
 }

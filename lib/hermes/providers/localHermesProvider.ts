@@ -26,11 +26,13 @@ import type {
   HermesResult,
   LearningCandidate,
   MemoryQuery,
+  ModelVersion,
   ProposeCandidateInput,
   ProposeSkillInput,
+  RuleVersion,
 } from "../types.js";
 import { hermesOk, hermesUnavailable } from "../types.js";
-import type { Json } from "../../supabase/types.js";
+import type { AuditLog, Json } from "../../supabase/types.js";
 
 // Public input shapes take `Record<string, unknown>` for caller ergonomics
 // (a plain object literal, not the recursive `Json` union); every value
@@ -205,6 +207,33 @@ export class LocalHermesProvider implements HermesProvider {
       return hermesOk(await runGenerateCandidates(this.store, organizationId));
     } catch (err) {
       return hermesUnavailable(`generateCandidatesFromFeedback failed: ${toMessage(err)}`);
+    }
+  }
+
+  async listModelVersions(organizationId: string): Promise<HermesResult<ModelVersion[]>> {
+    try {
+      return hermesOk(await this.store.listModelVersions(organizationId));
+    } catch (err) {
+      return hermesUnavailable(`listModelVersions failed: ${toMessage(err)}`);
+    }
+  }
+
+  async listRuleVersions(organizationId: string): Promise<HermesResult<RuleVersion[]>> {
+    try {
+      return hermesOk(await this.store.listRuleVersions(organizationId));
+    } catch (err) {
+      return hermesUnavailable(`listRuleVersions failed: ${toMessage(err)}`);
+    }
+  }
+
+  async listAuditLogs(
+    organizationId: string,
+    filter?: { limit?: number; before?: string; correlationId?: string }
+  ): Promise<HermesResult<AuditLog[]>> {
+    try {
+      return hermesOk(await this.store.listAuditLogs(organizationId, filter));
+    } catch (err) {
+      return hermesUnavailable(`listAuditLogs failed: ${toMessage(err)}`);
     }
   }
 }
