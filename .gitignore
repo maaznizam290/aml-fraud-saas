@@ -8,3 +8,5 @@ supabase/.branches/
 supabase/.temp/
 .DS_Store
 *.log
+.venv/
+__pycache__/
