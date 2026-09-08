@@ -167,22 +167,31 @@ logic — see `tests/components/testUtils.tsx`.
 
 ## Known limitations
 
-- **`next dev`-only cold-start race in the demo simulator.** Verified via
-  direct testing: the *very first* request pair to two dynamic API routes
-  that haven't yet been compiled in a fresh `next dev` process can
-  transiently miss the shared DEMO-mode in-memory singleton (Next dev
-  compiles each dynamic route on demand; the first hit to a new route can
-  momentarily evaluate it against a separate module graph). Confirmed
-  absent in a production build (`npm run build:app && npm run start:app`)
-  — the actual deployment target — where every route is compiled up front
-  into one process before serving traffic. The demo page auto-retries once
-  after 700ms as cheap insurance against a genuinely transient hiccup, but
-  the real fix for `next dev` is simply that the second run of any given
-  route pair always works once both are warm. This is a `next dev`
-  ergonomics quirk, not a production bug, and not something this branch
-  should "fix" by redesigning the DEMO-mode singleton architecture that
-  predates it (`lib/orchestration/runtime.ts`, from
-  feature/n8n-orchestration).
+- **Fixed: `next dev` cold-start bug in the demo simulator** (reported as
+  "Alert ... not found" when approving/rejecting right after a demo run).
+  Root cause: `next dev` compiles each dynamic API route on demand, and
+  the first hit to a route Next hasn't touched yet can momentarily
+  evaluate `lib/orchestration/runtime.ts` / `lib/hermes/runtime.ts` as a
+  *separate* module instance — so the DEMO-mode in-memory singleton
+  (previously a plain module-level `let`) could end up as two different
+  objects, one per route, each empty from the other's point of view. Fixed
+  by holding the singleton on `globalThis` instead (the same fix
+  Prisma-style singletons use for the same reason) — `globalThis` is
+  shared by every module instance in the process regardless of how many
+  separate bundles compiled the same source file. A related instance of
+  the same root cause broke `POST /api/demo/trigger`'s own
+  `instanceof InMemoryOrchestrationStore` check (two bundles of the same
+  class are not `instanceof`-equal to each other); replaced with a
+  structural (duck-typed) check for the seed methods it actually needs,
+  which has no class identity to get wrong. Verified by clearing `.next`,
+  starting a fresh `next dev` process, and hitting `trigger` →
+  `workspace` → `review` as literally the first requests to each of those
+  routes — all three now succeed, and all 5 demo scenarios were exercised
+  end-to-end (including both Approve and Reject) via browser automation
+  with zero failures. No effect on REAL mode or on a production build
+  (`next build && next start`), which never had this bug (every route is
+  compiled once, up front, into one process before serving traffic) but
+  is unaffected by the fix either way.
 - **Audit correlation is resolved, not redesigned.** `investigationService.ts`
   correlates its own audit rows by a per-run UUID (stored in
   `ai_recommendations.metadata.correlationId`), while `resolveCase()` and

@@ -9,6 +9,16 @@
  * DEMO mode only: this seeds fabricated data directly into a store, which
  * would corrupt a real database in REAL mode, so REAL mode refuses this
  * route outright rather than ever touching Supabase with synthetic rows.
+ *
+ * The DEMO-mode check below is structural (duck-typed), not
+ * `instanceof InMemoryOrchestrationStore`. `next dev` compiles each
+ * dynamic route on demand and can give two routes their own separate
+ * bundle of the same source file — `runtime.ts` and this route would then
+ * each hold a *different* class object for `InMemoryOrchestrationStore`
+ * even though it's the same code, and `instanceof` compares that class
+ * identity, not shape. That produced a real bug: "DEMO mode store is not
+ * the expected in-memory implementation" on a perfectly good store. A
+ * plain method-presence check has no such identity to get wrong.
  */
 import { z } from "zod";
 import { NextResponse } from "next/server";
@@ -16,7 +26,25 @@ import { NextResponse } from "next/server";
 import { buildScenario, isDemoScenarioId } from "@/lib/dashboard/demoScenarios.js";
 import { runInvestigation } from "@/lib/orchestration/investigationService.js";
 import { buildRuntime } from "@/lib/orchestration/runtime.js";
-import { InMemoryOrchestrationStore } from "@/lib/orchestration/stores/inMemoryStore.js";
+import type { OrchestrationStore } from "@/lib/orchestration/store.js";
+import type { Alert, Customer, CustomerProfile, Transaction } from "@/lib/supabase/types.js";
+
+interface DemoSeedableStore extends OrchestrationStore {
+  seedCustomer(customer: Customer): void;
+  seedCustomerProfile(profile: CustomerProfile): void;
+  seedTransaction(transaction: Transaction): void;
+  seedAlert(alert: Alert): void;
+}
+
+function isDemoSeedable(store: OrchestrationStore): store is DemoSeedableStore {
+  const candidate = store as Partial<DemoSeedableStore>;
+  return (
+    typeof candidate.seedCustomer === "function" &&
+    typeof candidate.seedCustomerProfile === "function" &&
+    typeof candidate.seedTransaction === "function" &&
+    typeof candidate.seedAlert === "function"
+  );
+}
 
 const requestSchema = z.object({ scenarioId: z.string().min(1) });
 
@@ -28,7 +56,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       { status: 409 }
     );
   }
-  if (!(runtime.store instanceof InMemoryOrchestrationStore)) {
+  if (!isDemoSeedable(runtime.store)) {
     return NextResponse.json({ error: "DEMO mode store is not the expected in-memory implementation." }, { status: 500 });
   }
 

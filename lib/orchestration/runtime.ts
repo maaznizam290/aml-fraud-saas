@@ -8,6 +8,22 @@
  * the investor demo walks through webhook -> review -> resolve as separate
  * calls, and needs the same in-memory case to still be there for the
  * second and third call.
+ *
+ * It's held on `globalThis` rather than a plain module-level variable
+ * because `next dev` compiles each dynamic API route on demand — the
+ * first request to a route Next hasn't touched yet can momentarily
+ * evaluate this module as a separate instance with its own module scope,
+ * which would give a fresh (empty) singleton to that one route while
+ * every other, already-compiled route keeps talking to the original.
+ * That surfaced as real bugs (e.g. "Alert ... not found" when submitting
+ * a human review right after the demo simulator created it): the seed
+ * landed in one instance's map, the review read from another's. Node's
+ * `globalThis` is shared by every module instance in the same process
+ * regardless of how many separate module graphs bundled it, so storing
+ * the singleton there survives that split. This has no effect on REAL
+ * mode (no singleton there) and none on a production build, where every
+ * route is compiled once, up front, into one process before serving
+ * traffic — see docs/DASHBOARD.md "Known limitations".
  */
 import { createServiceClient } from "../supabase/serviceClient.js";
 import { loadConfig, type OrchestrationConfig } from "./config.js";
@@ -28,16 +44,24 @@ export interface OrchestrationRuntime {
   notifier: NotificationDispatcher;
 }
 
-let demoStoreSingleton: OrchestrationStore | null = null;
+declare global {
+  var __amlDemoOrchestrationStore: OrchestrationStore | undefined;
+}
+
+function getDemoStore(): OrchestrationStore {
+  if (!globalThis.__amlDemoOrchestrationStore) {
+    globalThis.__amlDemoOrchestrationStore = createDemoStore();
+  }
+  return globalThis.__amlDemoOrchestrationStore;
+}
 
 export function buildRuntime(overrideConfig?: OrchestrationConfig): OrchestrationRuntime {
   const config = overrideConfig ?? loadConfig();
 
   if (config.mode === "DEMO") {
-    if (!demoStoreSingleton) demoStoreSingleton = createDemoStore();
     return {
       config,
-      store: demoStoreSingleton,
+      store: getDemoStore(),
       llm: new DemoLLMProvider(),
       notifier: createNoopNotifier(),
     };
@@ -67,5 +91,5 @@ export function buildRuntime(overrideConfig?: OrchestrationConfig): Orchestratio
 
 /** Test-only: reset the DEMO singleton between test cases. */
 export function resetDemoStoreForTests(): void {
-  demoStoreSingleton = null;
+  globalThis.__amlDemoOrchestrationStore = undefined;
 }

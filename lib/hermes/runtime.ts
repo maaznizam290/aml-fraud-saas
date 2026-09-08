@@ -9,6 +9,15 @@
  * falls back to `UnavailableHermesProvider` rather than let that failure
  * propagate into a caller — see providers/unavailableHermesProvider.ts and
  * task section 10's fail-safe requirement.
+ *
+ * Like lib/orchestration/runtime.ts's DEMO singleton, this one is held on
+ * `globalThis` rather than a plain module-level variable, for the same
+ * reason: `next dev` compiling a new dynamic route on demand can briefly
+ * evaluate this module as a second instance with its own module scope,
+ * which would hand that one route an empty store while every other route
+ * keeps using the original. `globalThis` is shared across every module
+ * instance in the process, so it survives that split. No effect on REAL
+ * mode or a production build — see docs/DASHBOARD.md "Known limitations".
  */
 import { createServiceClient } from "../supabase/serviceClient.js";
 import { loadHermesConfig, type HermesConfig } from "./config.js";
@@ -24,7 +33,16 @@ export interface HermesRuntime {
   provider: HermesProvider;
 }
 
-let demoStoreSingleton: HermesStore | null = null;
+declare global {
+  var __amlDemoHermesStore: HermesStore | undefined;
+}
+
+function getDemoStore(): HermesStore {
+  if (!globalThis.__amlDemoHermesStore) {
+    globalThis.__amlDemoHermesStore = new InMemoryHermesStore();
+  }
+  return globalThis.__amlDemoHermesStore;
+}
 
 export function buildHermesRuntime(overrideConfig?: HermesConfig): HermesRuntime {
   const config = overrideConfig ?? loadHermesConfig();
@@ -35,8 +53,7 @@ export function buildHermesRuntime(overrideConfig?: HermesConfig): HermesRuntime
 
   try {
     if (config.mode === "DEMO") {
-      if (!demoStoreSingleton) demoStoreSingleton = new InMemoryHermesStore();
-      return { config, provider: new LocalHermesProvider(demoStoreSingleton) };
+      return { config, provider: new LocalHermesProvider(getDemoStore()) };
     }
 
     const store = new SupabaseHermesStore(createServiceClient());
@@ -52,5 +69,5 @@ export function buildHermesRuntime(overrideConfig?: HermesConfig): HermesRuntime
 
 /** Test-only: reset the DEMO singleton between test cases. */
 export function resetHermesDemoStoreForTests(): void {
-  demoStoreSingleton = null;
+  globalThis.__amlDemoHermesStore = undefined;
 }
