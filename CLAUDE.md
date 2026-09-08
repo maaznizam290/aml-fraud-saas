@@ -7,41 +7,35 @@ suitable for investor demonstrations.
 
 ## Architecture
 
+_Rebuilt as an MVP on `rebuild/express-mvp-platform` (see git history for the
+prior Next.js-monolith version if any of that work needs to be recovered)._
+
 Frontend:
-- Next.js
+- React + Vite
 - TypeScript
 - Tailwind
-- shadcn/ui
 
-Backend:
-- Next.js API routes / server actions
-- Supabase PostgreSQL
+Backend (API gateway):
+- Node.js + Express + TypeScript
+- Supabase PostgreSQL (Row-Level Security), with a graceful in-memory
+  fallback store when Supabase secrets are not configured
 
-Workflow:
-- n8n
+ML Engine:
+- Python + FastAPI
+- A deterministic, mathematically-defined stand-in for a trained XGBoost
+  classifier (see ml-engine/main.py's own docstring) — mapping amount,
+  velocity, account age, and device risk to a fraud probability
 
 AI:
-- Claude API
-- Hermes Agent
-
-ML:
-- Python
-- scikit-learn
-- XGBoost
-- Isolation Forest
-- LOF
-- One-Class SVM
-- KMeans
+- Claude API (Anthropic) — structured JSON only, used by the Hermes
+  synthesis endpoint
+- Hermes Agent — proposes new heuristic rules from confirmed analyst
+  decisions; never deploys them itself (see Critical Rule)
 
 Infrastructure:
-- Vercel
-- Supabase
-- n8n VPS
-- Hugging Face
-
-Notifications:
-- Slack
-- Resend
+- Supabase (Postgres + Auth)
+- Any Node host for the Express gateway, any Python host (or the same
+  box) for the FastAPI ML engine
 
 ## Critical Rule
 
