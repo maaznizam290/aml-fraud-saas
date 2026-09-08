@@ -40,23 +40,42 @@ Express gateway ────────▶ Claude API (Hermes briefs + rule syn
 
 ## Quick start (demo mode — no secrets required)
 
-```bash
-# 1. Install Node dependencies
-npm install
+You need three processes running at once: the ML engine, the Express
+gateway, and the Vite frontend. `npm run dev` starts the gateway and the
+frontend together in one terminal (via `concurrently`); the ML engine is
+Python, so it always needs its own terminal/venv.
 
-# 2. Set up the ML engine
+**Terminal 1 — ML engine** (macOS/Linux):
+
+```bash
 cd ml-engine
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 &
-cd ..
-
-# 3. Start the Express gateway (in-memory store, template Hermes briefs)
-npm run dev:server &
-
-# 4. Start the frontend
-npm run dev:client
+.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 ```
+
+**Terminal 1 — ML engine** (Windows PowerShell):
+
+```powershell
+cd ml-engine
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+**Terminal 2 — Express gateway + Vite frontend** (any shell, from the repo root):
+
+```bash
+npm install
+npm run dev
+```
+
+> Don't chain commands with `&` in PowerShell (`npm run dev:server & npm run dev:client`
+> fails there — `&` is a reserved operator, not a background operator like in
+> bash). Use `npm run dev` instead, which runs both via `concurrently` and
+> works the same in bash, zsh, and PowerShell. If you do want them in two
+> separate terminals, run `npm run dev:server` and `npm run dev:client`
+> each in its own terminal/tab rather than joining them with `&`.
 
 Open the printed Vite URL (default `http://localhost:5173`). Use the
 Transaction Simulator to submit a transaction — small/old-account

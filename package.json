@@ -5,6 +5,7 @@
   "description": "AML fraud detection SaaS MVP — Express gateway, FastAPI ML engine, React dashboard.",
   "type": "module",
   "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
     "dev:client": "vite",
     "dev:server": "tsx watch server/index.ts",
     "build:client": "tsc -p tsconfig.json && vite build",
@@ -36,6 +37,7 @@
     "@typescript-eslint/parser": "^8.19.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
     "eslint": "^9.17.0",
     "postcss": "^8.4.49",
     "supertest": "^7.0.0",
