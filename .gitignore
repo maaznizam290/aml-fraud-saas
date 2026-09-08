@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-server/
 coverage/
 .env
 .env.local
@@ -10,6 +11,8 @@ supabase/.temp/
 *.log
 .venv/
 __pycache__/
+.pytest_cache/
+.ruff_cache/
 .next/
 next-env.d.ts
 *.tsbuildinfo
